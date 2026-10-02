@@ -64,7 +64,7 @@ The framework is Next.js with React 19 and a static export. `npm run build` prod
 
 ## Deploy on Vercel
 
-Import this GitHub repository into Vercel. The checked-in `vercel.json` selects Next.js, runs `npm run build`, and serves `out/`. Leave the Root Directory as the repository root. Future pushes to `main` publish production updates.
+Import this GitHub repository into Vercel. The checked-in `vercel.json` selects the Other preset, runs the Next.js build with `npm run build`, and serves the static `out/` directory. Leave the Root Directory as the repository root. Future pushes to `main` publish production updates.
 
 Vercel provides the production URL for canonical/social metadata. For another host, set `NEXT_PUBLIC_SITE_URL` before building.
 
