@@ -64,6 +64,7 @@ import { exportImage } from "@/lib/chroma/renderer";
 import { historyReducer } from "@/lib/chroma/history";
 import {
   DRAFT_KEY,
+  COLLECTION_KEY,
   readDraft,
   readCollection,
   persistCollection,
@@ -128,7 +129,8 @@ export default function Studio() {
     const onChange = () => setPlaying(!media.matches);
     media.addEventListener("change", onChange);
     const sync = (e: StorageEvent) => {
-      if (e.key === "chroma:collection:v1") setCollection(readCollection());
+      if (e.key === COLLECTION_KEY || e.key === null)
+        setCollection(readCollection());
     };
     window.addEventListener("storage", sync);
     return () => {
@@ -149,7 +151,7 @@ export default function Studio() {
     return () => clearTimeout(id);
   }, [design, ready]);
   const startSave = useCallback(() => {
-    setName(design.name);
+    setName(design.name.slice(0, 60));
     setModal("save");
   }, [design.name]);
   useEffect(() => {
@@ -203,7 +205,8 @@ export default function Studio() {
   }
   function save() {
     if (!name.trim()) return;
-    if (collection.length >= 60) {
+    const current = readCollection();
+    if (current.length >= 60) {
       toast.error("Your collection is full. Remove a preset to save another.");
       return;
     }
@@ -212,7 +215,7 @@ export default function Studio() {
       design: { ...design, name: name.trim() },
       createdAt: new Date().toISOString(),
     };
-    const next = [item, ...collection];
+    const next = [item, ...current];
     try {
       persistCollection(next);
       setCollection(next);
@@ -229,7 +232,7 @@ export default function Studio() {
     }
   }
   function remove(item: SavedDesign) {
-    const next = collection.filter((p) => p.id !== item.id);
+    const next = readCollection().filter((p) => p.id !== item.id);
     try {
       persistCollection(next);
       setCollection(next);
@@ -238,10 +241,12 @@ export default function Studio() {
           label: "Undo",
           onClick: () => {
             try {
-              const restored = [
-                item,
-                ...readCollection().filter((p) => p.id !== item.id),
-              ].slice(0, 60);
+              const current = readCollection().filter((p) => p.id !== item.id);
+              if (current.length >= 60) {
+                toast.error("Your collection is full. Remove a preset before restoring this one.");
+                return;
+              }
+              const restored = [item, ...current];
               persistCollection(restored);
               setCollection(restored);
             } catch {
@@ -291,7 +296,7 @@ export default function Studio() {
       if (file.size > 20000)
         throw new Error("Choose a CHROMA JSON file smaller than 20 KB.");
       const data = JSON.parse(await file.text());
-      if (data.version !== 1 || !isDesign(data.design))
+      if (!data || data.version !== 1 || !isDesign(data.design))
         throw new Error("That file is not a valid CHROMA design.");
       apply(data.design);
       toast.success(`Imported ${data.design.name}`);
@@ -319,7 +324,11 @@ export default function Studio() {
     action();
   };
   return (
-    <div className={"app-shell " + (expanded ? "is-expanded" : "")}>
+    <div
+      className={"app-shell " + (expanded ? "is-expanded" : "")}
+      inert={!ready}
+      aria-busy={!ready}
+    >
       <Toaster theme="dark" position="bottom-center" richColors />
       <input
         ref={fileInput}
@@ -801,7 +810,10 @@ export default function Studio() {
         )}
         <footer className="site-footer">
           <span>
-            <Aperture size={15} /> Built for the joy of making.
+            <Aperture size={15} />
+            <a href="https://github.com/pralav-25" target="_blank" rel="noopener noreferrer">
+              Created by Pralav
+            </a>
           </span>
           <button className="text-button" onClick={() => setModal("help")}>
             A FEW HELPFUL SHORTCUTS <CommandIcon size={11} />

@@ -4,6 +4,8 @@
 
 CHROMA is a portfolio project with a working creative workflow: choose a preset, edit it live, save a variation, and export the result. It runs without API keys or a graphics service.
 
+[Try the public studio](https://chroma-visual-studio.websites4u.chatgpt.site) · Created by [Pralav](https://github.com/pralav-25)
+
 ## Run locally
 
 Node.js 22.13+ and npm are required.
@@ -16,9 +18,9 @@ npm run dev
 Open the local URL printed by the server (normally http://localhost:5173).
 
 ```sh
-npx tsc --noEmit
+npm run typecheck
 npm run lint
-node --experimental-strip-types --test tests/core.test.mjs
+npm test
 npm run build
 ```
 
@@ -52,6 +54,7 @@ PNG exports contain the artwork only. Preview text and studio controls are inten
 | `components/chroma/webmcp.tsx` | Optional, validated browser-agent actions |
 | `components/ui/` | Existing shadcn/Radix primitives |
 | `tests/core.test.mjs` | State transitions and malformed-import protection |
+| `tests/renderer.test.mjs` | GPU export limits and renderer resource lifecycle |
 
 React owns the interface and design state. The animation loop reads the latest settings without driving React renders on every frame. One fullscreen triangle is drawn per frame; colors and parameters are uniforms. Device pixel ratio is capped at 1.75 for interactive rendering, and hidden documents skip rendering. PNG export uses a separate canvas at the requested resolution.
 
@@ -81,6 +84,6 @@ The UI, art direction, shader formulas, state logic, and product copy are origin
 
 ## Practical limits
 
-WebGL and hardware acceleration must be available. A graphics error state is shown when the context is unavailable; settings remain editable. Export resolution is constrained by GPU limits. This is a frontend portfolio application, not a multi-user SaaS product: there is no cloud account system, collaboration, video export, or backend collection service.
+WebGL and hardware acceleration must be available. A graphics error state is shown when the context is unavailable; settings remain editable. An export that exceeds the device's GPU limit is rejected with a request to choose a lower resolution, rather than silently resizing the artwork. This is a frontend portfolio application: there is no cloud account system, collaboration, video export, or backend collection service.
 
-Before sharing a hosted link on LinkedIn, verify its audience settings. A private deployment is accessible to its owner, not every visitor. This repository can be published to your own GitHub account; no GitHub repository is created automatically.
+The hosted studio is public. Drafts and collections stay in each visitor's own browser; they are not uploaded to the site. This source can be published to your own GitHub account; no GitHub repository is created automatically.

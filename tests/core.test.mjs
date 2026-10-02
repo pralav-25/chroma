@@ -90,3 +90,25 @@ test("undo of an in-progress gesture remains redoable", () => {
   s = historyReducer(s, { type: "redo" });
   assert.equal(s.present.scale, 80);
 });
+
+test("a gesture returning to its origin preserves the redo branch", () => {
+  let s = historyReducer(start(), { type: "update", design: presets[1] });
+  s = historyReducer(s, { type: "undo" });
+  const original = s.present;
+  s = historyReducer(s, { type: "preview", design: { ...original, scale: 80 } });
+  s = historyReducer(s, { type: "preview", design: original });
+  s = historyReducer(s, { type: "commit" });
+  s = historyReducer(s, { type: "redo" });
+  assert.equal(s.present.name, "Acid dream");
+});
+
+test("undoing a new gesture discards the obsolete redo branch", () => {
+  let s = historyReducer(start(), { type: "update", design: presets[1] });
+  s = historyReducer(s, { type: "update", design: presets[2] });
+  s = historyReducer(s, { type: "undo" });
+  s = historyReducer(s, { type: "preview", design: { ...s.present, scale: 80 } });
+  s = historyReducer(s, { type: "undo" });
+  s = historyReducer(s, { type: "redo" });
+  assert.equal(s.present.scale, 80);
+  assert.equal(s.future.length, 0);
+});

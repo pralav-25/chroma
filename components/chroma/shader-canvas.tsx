@@ -70,14 +70,20 @@ export const ShaderCanvas = forwardRef<
     function restored() {
       start();
     }
+    function visible() {
+      dirty = true;
+      last = performance.now();
+    }
     canvas.addEventListener("webglcontextlost", lost);
     canvas.addEventListener("webglcontextrestored", restored);
+    document.addEventListener("visibilitychange", visible);
     start();
     return () => {
       cancelAnimationFrame(raf);
       resize.disconnect();
       canvas.removeEventListener("webglcontextlost", lost);
       canvas.removeEventListener("webglcontextrestored", restored);
+      document.removeEventListener("visibilitychange", visible);
       renderer?.dispose();
     };
   }, []);

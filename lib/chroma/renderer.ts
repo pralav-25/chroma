@@ -64,9 +64,13 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     powerPreference: "low-power",
   });
   if (!gl) throw new Error("WebGL is unavailable on this device.");
+  const shaders: WebGLShader[] = [];
+  let allocatedProgram: WebGLProgram | null = null;
+  let allocatedBuffer: WebGLBuffer | null = null;
   const compile = (type: number, source: string) => {
     const shader = gl.createShader(type);
     if (!shader) throw new Error("Could not allocate a shader.");
+    shaders.push(shader);
     gl.shaderSource(shader, source);
     gl.compileShader(shader);
     if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
@@ -76,75 +80,94 @@ export function createRenderer(canvas: HTMLCanvasElement) {
     }
     return shader;
   };
-  const vertex = compile(gl.VERTEX_SHADER, vertexSource),
-    fragment = compile(gl.FRAGMENT_SHADER, fragmentSource);
-  const program = gl.createProgram();
-  if (!program) throw new Error("Could not allocate the renderer.");
-  gl.attachShader(program, vertex);
-  gl.attachShader(program, fragment);
-  gl.linkProgram(program);
-  gl.deleteShader(vertex);
-  gl.deleteShader(fragment);
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS))
-    throw new Error("Could not link the renderer.");
-  gl.useProgram(program);
-  const buffer = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(
-    gl.ARRAY_BUFFER,
-    new Float32Array([-1, -1, 3, -1, -1, 3]),
-    gl.STATIC_DRAW,
-  );
-  const position = gl.getAttribLocation(program, "position");
-  gl.enableVertexAttribArray(position);
-  gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
-  const names = [
-    "u_resolution",
-    "u_time",
-    "u_scale",
-    "u_distortion",
-    "u_grain",
-    "u_seed",
-    "u_mode",
-    "u_c0",
-    "u_c1",
-    "u_c2",
-    "u_c3",
-  ];
-  const uniforms = Object.fromEntries(
-    names.map((name) => [name, gl.getUniformLocation(program, name)]),
-  );
-  const limit = Math.min(gl.getParameter(gl.MAX_TEXTURE_SIZE) as number, 4096);
-  function draw(design: Design, time: number, width: number, height: number) {
-    const w = Math.max(1, Math.min(limit, Math.round(width))),
-      h = Math.max(1, Math.min(limit, Math.round(height)));
-    if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w;
-      canvas.height = h;
+  try {
+    const vertex = compile(gl.VERTEX_SHADER, vertexSource),
+      fragment = compile(gl.FRAGMENT_SHADER, fragmentSource);
+    const program = gl.createProgram();
+    allocatedProgram = program;
+    if (!program) throw new Error("Could not allocate the renderer.");
+    gl.attachShader(program, vertex);
+    gl.attachShader(program, fragment);
+    gl.linkProgram(program);
+    gl.deleteShader(vertex);
+    gl.deleteShader(fragment);
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+      throw new Error("Could not link the renderer.");
+    gl.useProgram(program);
+    const buffer = gl.createBuffer();
+    allocatedBuffer = buffer;
+    if (!buffer) throw new Error("Could not allocate the renderer buffer.");
+    gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+    gl.bufferData(
+      gl.ARRAY_BUFFER,
+      new Float32Array([-1, -1, 3, -1, -1, 3]),
+      gl.STATIC_DRAW,
+    );
+    const position = gl.getAttribLocation(program, "position");
+    gl.enableVertexAttribArray(position);
+    gl.vertexAttribPointer(position, 2, gl.FLOAT, false, 0, 0);
+    const names = [
+      "u_resolution",
+      "u_time",
+      "u_scale",
+      "u_distortion",
+      "u_grain",
+      "u_seed",
+      "u_mode",
+      "u_c0",
+      "u_c1",
+      "u_c2",
+      "u_c3",
+    ];
+    const uniforms = Object.fromEntries(
+      names.map((name) => [name, gl.getUniformLocation(program, name)]),
+    );
+    const viewport = gl.getParameter(gl.MAX_VIEWPORT_DIMS) as Int32Array;
+    const limit = Math.min(
+      gl.getParameter(gl.MAX_TEXTURE_SIZE) as number,
+      gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number,
+      viewport[0],
+      viewport[1],
+      4096,
+    );
+    function draw(design: Design, time: number, width: number, height: number) {
+      const ratio = Math.min(1, limit / width, limit / height);
+      const w = Math.max(1, Math.round(width * ratio)),
+        h = Math.max(1, Math.round(height * ratio));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      gl!.viewport(0, 0, w, h);
+      gl!.useProgram(program);
+      gl!.uniform2f(uniforms.u_resolution, w, h);
+      gl!.uniform1f(uniforms.u_time, time);
+      gl!.uniform1f(uniforms.u_scale, design.scale / 100);
+      gl!.uniform1f(uniforms.u_distortion, design.distortion / 100);
+      gl!.uniform1f(uniforms.u_grain, design.grain / 100);
+      gl!.uniform1f(uniforms.u_seed, design.seed);
+      gl!.uniform1f(
+        uniforms.u_mode,
+        ["flow", "mesh", "halo", "ribbons"].indexOf(design.effect),
+      );
+      design.colors.forEach((c, i) =>
+        gl!.uniform3fv(uniforms[`u_c${i}`], channels(c)),
+      );
+      gl!.drawArrays(gl!.TRIANGLES, 0, 3);
     }
-    gl!.viewport(0, 0, w, h);
-    gl!.useProgram(program);
-    gl!.uniform2f(uniforms.u_resolution, w, h);
-    gl!.uniform1f(uniforms.u_time, time);
-    gl!.uniform1f(uniforms.u_scale, design.scale / 100);
-    gl!.uniform1f(uniforms.u_distortion, design.distortion / 100);
-    gl!.uniform1f(uniforms.u_grain, design.grain / 100);
-    gl!.uniform1f(uniforms.u_seed, design.seed);
-    gl!.uniform1f(
-      uniforms.u_mode,
-      ["flow", "mesh", "halo", "ribbons"].indexOf(design.effect),
-    );
-    design.colors.forEach((c, i) =>
-      gl!.uniform3fv(uniforms[`u_c${i}`], channels(c)),
-    );
-    gl!.drawArrays(gl!.TRIANGLES, 0, 3);
+    function dispose(releaseContext = false) {
+      gl!.deleteBuffer(buffer);
+      gl!.deleteProgram(program);
+      if (releaseContext) gl!.getExtension("WEBGL_lose_context")?.loseContext();
+    }
+    return { draw, dispose, limit };
+  } catch (error) {
+    shaders.forEach((shader) => gl.deleteShader(shader));
+    gl.deleteBuffer(allocatedBuffer);
+    gl.deleteProgram(allocatedProgram);
+    gl.getExtension("WEBGL_lose_context")?.loseContext();
+    throw error;
   }
-  function dispose() {
-    gl!.deleteBuffer(buffer);
-    gl!.deleteProgram(program);
-    gl!.getExtension("WEBGL_lose_context")?.loseContext();
-  }
-  return { draw, dispose, limit };
 }
 export async function exportImage(
   design: Design,
@@ -155,6 +178,10 @@ export async function exportImage(
   const canvas = document.createElement("canvas");
   const renderer = createRenderer(canvas);
   try {
+    if (width > renderer.limit || height > renderer.limit)
+      throw new Error(
+        `This device supports exports up to ${renderer.limit} pixels. Choose a lower resolution.`,
+      );
     renderer.draw(design, time, width, height);
     const blob = await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob(
@@ -164,7 +191,7 @@ export async function exportImage(
     );
     return blob;
   } finally {
-    renderer.dispose();
+    renderer.dispose(true);
   }
 }
 export function thumbnail(design: Design) {
@@ -174,6 +201,6 @@ export function thumbnail(design: Design) {
     renderer.draw(design, 0, 360, 220);
     return canvas.toDataURL("image/png");
   } finally {
-    renderer.dispose();
+    renderer.dispose(true);
   }
 }

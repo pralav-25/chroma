@@ -26,7 +26,7 @@ export function historyReducer(state: History, action: HistoryAction): History {
       past: equal(state.origin, state.present)
         ? state.past
         : [...state.past, state.origin].slice(-50),
-      future: [],
+      future: equal(state.origin, state.present) ? state.future : [],
       origin: null,
     };
   }
@@ -40,13 +40,16 @@ export function historyReducer(state: History, action: HistoryAction): History {
     };
   }
   if (action.type === "undo") {
-    if (state.origin)
+    if (state.origin) {
+      if (equal(state.origin, state.present))
+        return { ...state, origin: null };
       return {
         ...state,
         present: state.origin,
-        future: [state.present, ...state.future],
+        future: [state.present],
         origin: null,
       };
+    }
     if (!state.past.length) return state;
     return {
       past: state.past.slice(0, -1),
