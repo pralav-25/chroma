@@ -4,9 +4,7 @@
 
 CHROMA is a portfolio project with a working creative workflow: choose a preset, edit it live, save a variation, and export the result. It runs without API keys or a graphics service.
 
-[Source on GitHub](https://github.com/pralav-25/chroma) · Created by [Pralav](https://github.com/pralav-25)
-
-The live Vercel demo is linked in the repository About section.
+[Live studio](https://chroma-tawny.vercel.app/) · [Source on GitHub](https://github.com/pralav-25/chroma) · Created by [Pralav](https://github.com/pralav-25)
 
 ## Run locally
 
