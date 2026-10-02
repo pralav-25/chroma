@@ -1,17 +1,20 @@
 import type { Metadata } from "next";
 import "./globals.css";
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_PROJECT_PRODUCTION_URL
+    ? `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`
+    : undefined);
 export const metadata: Metadata = {
-  metadataBase: new URL("https://chroma-visual-studio.websites4u.chatgpt.site"),
+  ...(siteUrl ? { metadataBase: new URL(siteUrl), alternates: { canonical: "/" } } : {}),
   title: "CHROMA — A playground for color and motion",
   description:
     "Create your own animated shader art. Explore curated presets, shape color in real time, and export high-resolution artwork from your browser.",
   icons: { icon: "/favicon.svg", shortcut: "/favicon.svg" },
-  alternates: { canonical: "/" },
   openGraph: {
     title: "CHROMA — A playground for color and motion",
     description:
       "Create animated shader art, edit palettes in real time, and export up to 4K PNG. A browser-based visual studio by Pralav.",
-    url: "/",
+    ...(siteUrl ? { url: siteUrl } : {}),
     siteName: "CHROMA",
     type: "website",
   },

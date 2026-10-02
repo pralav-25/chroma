@@ -4,7 +4,9 @@
 
 CHROMA is a portfolio project with a working creative workflow: choose a preset, edit it live, save a variation, and export the result. It runs without API keys or a graphics service.
 
-[Try the public studio](https://chroma-visual-studio.websites4u.chatgpt.site) · Created by [Pralav](https://github.com/pralav-25)
+[Source on GitHub](https://github.com/pralav-25/chroma) · Created by [Pralav](https://github.com/pralav-25)
+
+The live Vercel demo is linked in the repository About section.
 
 ## Run locally
 
@@ -15,7 +17,7 @@ npm ci
 npm run dev
 ```
 
-Open the local URL printed by the server (normally http://localhost:5173).
+Open the local URL printed by the server (normally http://localhost:3000).
 
 ```sh
 npm run typecheck
@@ -24,7 +26,7 @@ npm test
 npm run build
 ```
 
-`npm start` previews the built Cloudflare Worker locally. The included GitHub Actions workflow runs type checking, lint, domain tests, and a build on pushes and pull requests.
+After building, `npm start` serves the static `out/` directory locally. The included GitHub Actions workflow runs type checking, lint, domain tests, and a build on pushes and pull requests.
 
 ## What works
 
@@ -58,7 +60,13 @@ PNG exports contain the artwork only. Preview text and studio controls are inten
 
 React owns the interface and design state. The animation loop reads the latest settings without driving React renders on every frame. One fullscreen triangle is drawn per frame; colors and parameters are uniforms. Device pixel ratio is capped at 1.75 for interactive rendering, and hidden documents skip rendering. PNG export uses a separate canvas at the requested resolution.
 
-The framework is Vinext on Vite with React 19 and Cloudflare Worker output. The deployment scaffold includes optional database/auth helpers; CHROMA itself needs no backend, database, or app-owned authentication. Dependency versions are locked in `package-lock.json`.
+The framework is Next.js with React 19 and a static export. `npm run build` produces the `out/` directory. CHROMA needs no backend, database, authentication, or API keys. Dependency versions are locked in `package-lock.json`.
+
+## Deploy on Vercel
+
+Import this GitHub repository into Vercel. The checked-in `vercel.json` selects Next.js, runs `npm run build`, and serves `out/`. Leave the Root Directory as the repository root. Future pushes to `main` publish production updates.
+
+Vercel provides the production URL for canonical/social metadata. For another host, set `NEXT_PUBLIC_SITE_URL` before building.
 
 ## Research and design references
 
@@ -86,4 +94,4 @@ The UI, art direction, shader formulas, state logic, and product copy are origin
 
 WebGL and hardware acceleration must be available. A graphics error state is shown when the context is unavailable; settings remain editable. An export that exceeds the device's GPU limit is rejected with a request to choose a lower resolution, rather than silently resizing the artwork. This is a frontend portfolio application: there is no cloud account system, collaboration, video export, or backend collection service.
 
-The hosted studio is public. Drafts and collections stay in each visitor's own browser; they are not uploaded to the site. This source can be published to your own GitHub account; no GitHub repository is created automatically.
+The hosted studio is public. Drafts and collections stay in each visitor's own browser; they are not uploaded to the site. The source is available at [pralav-25/chroma](https://github.com/pralav-25/chroma).

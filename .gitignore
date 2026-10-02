@@ -17,6 +17,7 @@
 /.next/
 /.vinext/
 /out/
+/.vercel/
 
 # misc
 .DS_Store
