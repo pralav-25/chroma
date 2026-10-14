@@ -36,10 +36,11 @@ After building, `npm start` serves the static `out/` directory locally. The incl
 - Browser-local draft recovery and a named collection with removable presets and undo removal.
 - High-resolution PNG exports at 1920, 2560, or 3840 pixels wide, in a 16:10 aspect ratio.
 - Validated JSON import/export and a clearly labeled static CSS palette approximation.
+- Shareable design links that restore the effect, palette, and settings without an account or server.
 - Searchable command palette, keyboard shortcuts, accessible dialogs, named slider controls, and reduced-motion handling.
 - Responsive layouts and optional WebMCP tools for discovering and applying presets.
 
-PNG exports contain the artwork only. Preview text and studio controls are intentionally excluded. JSON saves design settings, not the exact animation timestamp. Collection data stays in the current browser; it does not sync across devices. Export JSON for a portable backup.
+PNG exports contain the artwork only. Preview text and studio controls are intentionally excluded. JSON saves design settings, not the exact animation timestamp. Collection data stays in the current browser; it does not sync across devices. Copy a share link for one design or export JSON for a portable backup.
 
 ## Architecture
 

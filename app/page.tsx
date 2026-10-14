@@ -15,6 +15,7 @@ import {
   Command as CommandIcon,
   Code2,
   Copy,
+  Share2,
   Layers,
   CircleHelp,
   Type,
@@ -57,6 +58,8 @@ import {
   effects,
   isDesign,
   designCode,
+  createShareUrl,
+  parseSharedDesign,
   cssGradient,
   type Design,
 } from "@/lib/chroma/design";
@@ -120,8 +123,19 @@ export default function Studio() {
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const initialize = requestAnimationFrame(() => {
+      const url = new URL(window.location.href);
+      const hasSharedDesign = url.searchParams.has("design");
+      const shared = hasSharedDesign ? parseSharedDesign(url.search) : null;
+      if (hasSharedDesign) {
+        url.searchParams.delete("design");
+        window.history.replaceState(window.history.state, "", url.toString());
+      }
       const draft = readDraft();
-      if (draft) dispatch({ type: "restore", design: draft });
+      if (shared) dispatch({ type: "restore", design: shared });
+      else if (draft) dispatch({ type: "restore", design: draft });
+      if (hasSharedDesign && !shared) {
+        toast.error("This design link is invalid. Your saved draft was restored.");
+      }
       setCollection(readCollection());
       setPlaying(!media.matches);
       setReady(true);
@@ -315,6 +329,18 @@ export default function Studio() {
     } catch {
       toast.error(
         "Clipboard access is unavailable. Select and copy the code below.",
+      );
+    }
+  }
+  async function copyShareLink() {
+    try {
+      await navigator.clipboard.writeText(
+        createShareUrl(design, window.location.href),
+      );
+      toast.success("Share link copied");
+    } catch {
+      toast.error(
+        "Clipboard access is unavailable. Try exporting the design JSON.",
       );
     }
   }
@@ -670,7 +696,8 @@ export default function Studio() {
                       <TabsContent value="json">
                         <p>
                           Portable settings for this shader. Import them into
-                          CHROMA to keep creating.
+                          CHROMA to keep creating, or copy a share link to open
+                          it on another device.
                         </p>
                       </TabsContent>
                       <TabsContent value="css">
@@ -697,6 +724,13 @@ export default function Studio() {
                     >
                       <Copy size={14} />
                       Copy {codeTab === "json" ? "JSON" : "CSS"}
+                    </button>
+                    <button
+                      className="button secondary copy-button"
+                      onClick={() => void copyShareLink()}
+                    >
+                      <Share2 size={14} />
+                      Copy share link
                     </button>
                     <button
                       className="text-button import-code"
@@ -1010,8 +1044,8 @@ export default function Studio() {
               export JSON to carry it with you.
             </p>
             <p>
-              <strong>03 / Share it</strong> Export up to 4K PNG. The typography
-              is a preview layer and stays out of your artwork.
+              <strong>03 / Share it</strong> Copy a link to your design or export
+              up to 4K PNG. Preview typography stays out of your artwork.
             </p>
           </div>
           <div className="keyboard-list">
