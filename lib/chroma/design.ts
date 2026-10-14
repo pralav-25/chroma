@@ -135,6 +135,47 @@ export function isDesign(value: unknown): value is Design {
 export function designCode(design: Design) {
   return JSON.stringify({ version: 1, design }, null, 2);
 }
+export function createShareUrl(design: Design, currentUrl: string) {
+  const url = new URL(currentUrl);
+  const portableDesign: Design = {
+    name: design.name,
+    effect: design.effect,
+    colors: [...design.colors],
+    speed: design.speed,
+    scale: design.scale,
+    distortion: design.distortion,
+    grain: design.grain,
+    seed: design.seed,
+  };
+  url.searchParams.set(
+    "design",
+    JSON.stringify({ version: 1, design: portableDesign }),
+  );
+  return url.toString();
+}
+export function parseSharedDesign(search: string): Design | null {
+  try {
+    const encoded = new URLSearchParams(search).get("design");
+    if (!encoded || encoded.length > 20_000) return null;
+    const value: unknown = JSON.parse(encoded);
+    if (!value || typeof value !== "object") return null;
+    const payload = value as { version?: unknown; design?: unknown };
+    if (payload.version !== 1 || !isDesign(payload.design)) return null;
+    const design = payload.design;
+    return {
+      name: design.name,
+      effect: design.effect,
+      colors: [...design.colors],
+      speed: design.speed,
+      scale: design.scale,
+      distortion: design.distortion,
+      grain: design.grain,
+      seed: design.seed,
+    };
+  } catch {
+    return null;
+  }
+}
 export function cssGradient(design: Design) {
   return `background: radial-gradient(ellipse at 75% 25%, ${design.colors[3]} 0%, transparent 45%),\n  radial-gradient(ellipse at 25% 70%, ${design.colors[2]} 0%, transparent 50%),\n  linear-gradient(135deg, ${design.colors[0]}, ${design.colors[1]});`;
 }
