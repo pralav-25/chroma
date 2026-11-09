@@ -112,3 +112,29 @@ test("undoing a new gesture discards the obsolete redo branch", () => {
   assert.equal(s.present.scale, 80);
   assert.equal(s.future.length, 0);
 });
+
+test("redo cannot overwrite a changed in-progress gesture with an obsolete future", () => {
+  let s = historyReducer(start(), { type: "update", design: presets[1] });
+  s = historyReducer(s, { type: "undo" });
+  s = historyReducer(s, { type: "preview", design: { ...s.present, scale: 80 } });
+  s = historyReducer(s, { type: "redo" });
+  assert.equal(s.present.name, "Afterglow");
+  assert.equal(s.present.scale, 80);
+  assert.equal(s.origin, null);
+  assert.equal(s.future.length, 0);
+  s = historyReducer(s, { type: "undo" });
+  assert.equal(s.present.scale, 45);
+  s = historyReducer(s, { type: "redo" });
+  assert.equal(s.present.scale, 80);
+});
+
+test("redo after a no-op preview preserves the existing future without a duplicate undo step", () => {
+  let s = historyReducer(start(), { type: "update", design: presets[1] });
+  s = historyReducer(s, { type: "undo" });
+  s = historyReducer(s, { type: "preview", design: { ...s.present } });
+  s = historyReducer(s, { type: "redo" });
+  assert.equal(s.present.name, "Acid dream");
+  assert.equal(s.past.length, 1);
+  assert.equal(s.origin, null);
+  assert.equal(s.future.length, 0);
+});
