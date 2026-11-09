@@ -39,6 +39,10 @@ export function historyReducer(state: History, action: HistoryAction): History {
       origin: null,
     };
   }
+  // A live edit branches from the current artwork before redo can run.
+  // Committing a no-op gesture still preserves its original redo branch.
+  if (action.type === "redo" && state.origin)
+    return historyReducer(historyReducer(state, { type: "commit" }), action);
   if (action.type === "undo") {
     if (state.origin) {
       if (equal(state.origin, state.present))
