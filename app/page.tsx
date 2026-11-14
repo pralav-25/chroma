@@ -141,14 +141,31 @@ export default function Studio() {
   }, []);
   useEffect(() => {
     if (!ready) return;
-    const id = setTimeout(() => {
+    let pending = true;
+    const persist = () => {
+      if (!pending) return;
       try {
         localStorage.setItem(DRAFT_KEY, JSON.stringify(design));
+        pending = false;
       } catch {
         /* Collection save reports storage failure explicitly. */
       }
-    }, 350);
-    return () => clearTimeout(id);
+    };
+    const id = setTimeout(persist, 350);
+    const flush = () => {
+      clearTimeout(id);
+      persist();
+    };
+    const onVisibilityChange = () => {
+      if (document.hidden) flush();
+    };
+    window.addEventListener("pagehide", flush);
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () => {
+      clearTimeout(id);
+      window.removeEventListener("pagehide", flush);
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+    };
   }, [design, ready]);
   const startSave = useCallback(() => {
     setName(design.name.slice(0, 60));
