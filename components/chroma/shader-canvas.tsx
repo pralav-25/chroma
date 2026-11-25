@@ -15,75 +15,88 @@ export const ShaderCanvas = forwardRef<
 >(({ design, playing }, ref) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const latest = useRef({ design, playing });
+  const requestDraw = useRef<(() => void) | null>(null);
   const elapsed = useRef(0);
   const [error, setError] = useState(false);
   useEffect(() => {
     latest.current = { design, playing };
+    requestDraw.current?.();
   }, [design, playing]);
   useImperativeHandle(ref, () => ({ getTime: () => elapsed.current }), []);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     let renderer: ReturnType<typeof createRenderer> | undefined;
-    let raf = 0,
-      last = 0,
-      dirty = true,
-      width = 1,
-      height = 1;
+    let raf: number | null = null;
+    let last = 0;
+    let width = 0;
+    let height = 0;
+
+    function scheduleDraw() {
+      if (!renderer || document.hidden || width <= 0 || height <= 0) {
+        if (raf !== null) cancelAnimationFrame(raf);
+        raf = null;
+        return;
+      }
+      if (raf === null) {
+        last = performance.now();
+        raf = requestAnimationFrame(frame);
+      }
+    }
+
     const resize = new ResizeObserver((entries) => {
       const rect = entries[0].contentRect;
       const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
       width = rect.width * dpr;
       height = rect.height * dpr;
-      dirty = true;
+      scheduleDraw();
     });
     resize.observe(canvas);
-    let previous: Design | undefined;
     function frame(now: number) {
-      const { design: d, playing: p } = latest.current;
-      if (p && !document.hidden)
-        elapsed.current += Math.min((now - last) / 1000, 0.05) * (d.speed / 35);
-      if (renderer && !document.hidden && (p || dirty || previous !== d)) {
-        renderer.draw(d, elapsed.current, width, height);
-        dirty = false;
-        previous = d;
+      raf = null;
+      if (!renderer || document.hidden) return;
+      const { design, playing } = latest.current;
+      const animating = playing && design.speed > 0;
+      if (animating) {
+        const seconds = Math.max(0, Math.min((now - last) / 1000, 0.05));
+        elapsed.current += seconds * (design.speed / 35);
       }
-      last = now;
-      raf = requestAnimationFrame(frame);
+      renderer.draw(design, elapsed.current, width, height);
+      if (animating) {
+        last = now;
+        raf = requestAnimationFrame(frame);
+      }
     }
     function start() {
       try {
         renderer = createRenderer(canvas!);
         setError(false);
-        dirty = true;
-        last = performance.now();
-        raf = requestAnimationFrame(frame);
+        scheduleDraw();
       } catch {
         setError(true);
       }
     }
     function lost(event: Event) {
       event.preventDefault();
-      cancelAnimationFrame(raf);
+      renderer = undefined;
+      scheduleDraw();
       setError(true);
     }
     function restored() {
       start();
     }
-    function visible() {
-      dirty = true;
-      last = performance.now();
-    }
     canvas.addEventListener("webglcontextlost", lost);
     canvas.addEventListener("webglcontextrestored", restored);
-    document.addEventListener("visibilitychange", visible);
+    document.addEventListener("visibilitychange", scheduleDraw);
+    requestDraw.current = scheduleDraw;
     start();
     return () => {
-      cancelAnimationFrame(raf);
+      requestDraw.current = null;
+      if (raf !== null) cancelAnimationFrame(raf);
       resize.disconnect();
       canvas.removeEventListener("webglcontextlost", lost);
       canvas.removeEventListener("webglcontextrestored", restored);
-      document.removeEventListener("visibilitychange", visible);
+      document.removeEventListener("visibilitychange", scheduleDraw);
       renderer?.dispose();
     };
   }, []);
